@@ -1,0 +1,31 @@
+# Real credentials — never commit these
+nuke_vcd.conf
+*.conf
+!nuke_vcd.conf.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+.Python
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs / debug
+*.log
+/tmp/
+
+# Schema dumps and other local artifacts
+*.sql.bak
+.claude/

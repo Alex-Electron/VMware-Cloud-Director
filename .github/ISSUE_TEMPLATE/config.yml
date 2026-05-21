@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question about VCD API itself
+    url: https://developer.broadcom.com/xapis/vmware-cloud-director-api/latest/
+    about: For questions about the underlying VCD REST API (not this script), the official docs are usually the right place to start.

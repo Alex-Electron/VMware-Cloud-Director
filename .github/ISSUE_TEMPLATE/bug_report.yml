@@ -1,0 +1,68 @@
+name: Bug report
+description: Something broke or didn't work the way the README said it should
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file this. The more concrete you are about
+        what you ran and what came back, the faster I can help.
+
+  - type: input
+    id: vcd-version
+    attributes:
+      label: VCD version
+      description: From the VCD UI footer, or `curl -k https://<vcd>/api/versions`.
+      placeholder: "10.4.2 (API 37.0)"
+    validations:
+      required: true
+
+  - type: input
+    id: script-version
+    attributes:
+      label: Script commit
+      description: Output of `git rev-parse --short HEAD` in your local clone.
+      placeholder: "692394a"
+    validations:
+      required: false
+
+  - type: textarea
+    id: command
+    attributes:
+      label: What you ran
+      description: Exact command, including flags. Redact org names if you need to.
+      render: shell
+      placeholder: |
+        ./nuke-vcd.sh sc-foo --action delete --yes --on-vms stop-and-delete -v
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      placeholder: The org should have been deleted.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: |
+        Paste the relevant output. If you can, re-run with `-v` so the HTTP
+        requests are in the log — that's almost always what I need to debug.
+        VCD error responses usually contain a `minorErrorCode` and a Java
+        stacktrace; the minorErrorCode is the useful part.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround you used (if any)
+      description: e.g. deleted some resource manually in the UI, ran a specific API call by hand, etc.
+    validations:
+      required: false
