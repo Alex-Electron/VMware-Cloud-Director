@@ -1,0 +1,50 @@
+name: Feature request
+description: Ask for a new capability or change to existing behaviour
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like the script to do?
+      description: One paragraph is enough. Bullet list is fine too.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: |
+        What problem does this solve in your environment? "We have N tenants
+        with X attached and have to do Y by hand every time" is the kind of
+        context that helps me prioritise.
+    validations:
+      required: true
+
+  - type: textarea
+    id: api
+    attributes:
+      label: Known VCD API endpoints (optional)
+      description: |
+        If you already know which endpoints are involved (CloudAPI path, query
+        type, etc.), drop them here. Saves me hunting.
+      placeholder: |
+        GET /cloudapi/1.0.0/...
+        POST /api/admin/...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: How big is this in your head?
+      options:
+        - Small (a flag, a missing endpoint, a copy fix)
+        - Medium (a new resource type to clean up)
+        - Large (a new mode, big refactor)
+        - Not sure
+      default: 3
+    validations:
+      required: false
