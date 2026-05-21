@@ -1,0 +1,19 @@
+# nuke_vcd.conf — credentials for the VCD tenant nuker.
+#
+# Copy this file to nuke_vcd.conf and fill in your values.
+# The script looks here, in order:
+#   1. --config /path
+#   2. $VCD_CONFIG
+#   3. ./nuke_vcd.conf  (next to the script or in the working dir)
+#   4. ~/.nuke_vcd.conf
+#
+# Env vars override the file:
+#   VCD_BASE, VCD_USER, VCD_PASS, VCD_API_VERSION
+#
+# chmod 600 nuke_vcd.conf. It has a password in it.
+
+[vcd]
+base         = https://vcd.example.com
+user         = administrator
+password     = REPLACE_ME
+api_version  = 37.0
