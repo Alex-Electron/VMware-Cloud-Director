@@ -58,10 +58,18 @@ $EDITOR nuke_vcd.conf
 chmod +x nuke-vcd.sh
 ```
 
+### Windows (PowerShell/CMD)
+
+```powershell
+# No special install needed beyond cloning the repo
+.\nuke-vcd.bat
+```
+
 Then either:
 
 ```bash
-./nuke-vcd.sh             # bash launcher (handles venv if needed)
+./nuke-vcd.sh             # bash launcher (Linux/macOS)
+.\nuke-vcd.bat            # Windows launcher (handles venv if needed)
 python3 nuke_vcd_tenant.py
 ```
 
