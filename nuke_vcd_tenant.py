@@ -85,7 +85,7 @@ API_VERSION = '37.0'
 POLL_INTERVAL = 3
 TASK_TIMEOUT  = 30 * 60
 
-__version__ = '1.1.1'
+__version__ = '1.2.0'
 VERBOSE = False
 
 
@@ -145,8 +145,8 @@ def apply_config(cfg: dict):
 # ---------------------------------------------------------------------------
 
 class C:
-    OK = '\033[92m'; WARN = '\033[93m'; ERR = '\033[91m'
-    HEAD = '\033[96m'; DIM = '\033[2m'; BOLD = '\033[1m'; END = '\033[0m'
+    OK = ''; WARN = ''; ERR = ''
+    HEAD = ''; DIM = ''; BOLD = ''; END = ''
 
 def info(m): print(f"[*] {m}")
 def ok(m):   print(f"{C.OK}[OK]{C.END} {m}")
@@ -207,7 +207,7 @@ class VCD:
     # --- low level
     def _req(self, method, url, json_api=False, body=None):
         h = self._json_h() if json_api else self._xml_h()
-        kw = {}
+        kw = {'timeout': 60}
         if body is not None: kw['data'] = json.dumps(body)
         r = self.s.request(method, url, headers=h, **kw)
         vlog(f"{method} {url} -> {r.status_code}")
@@ -1011,7 +1011,7 @@ def _delete_cluster_vapp(api: VCD, cluster_name: str, vdc_name: str = '') -> boo
     return True
 
 
-def delete_one_k8s_cluster(api: VCD, tns: str, ent: dict, vdcs: list = None):
+def delete_one_k8s_cluster(api: VCD, tns: str, ent: dict, vdcs: list = None, edges: list = None):
     """Full cleanup of one CAPVCD cluster: vApp -> CSE tokens -> RDE."""
     name = ent.get('name'); rid = ent.get('id')
     owner = (ent.get('owner') or {}).get('name','')
@@ -1030,6 +1030,51 @@ def delete_one_k8s_cluster(api: VCD, tns: str, ent: dict, vdcs: list = None):
         found_vapp = _delete_cluster_vapp(api, name)
     if not found_vapp:
         dim(f"  no vApp named '{name}' — already gone or never created")
+
+    # LB Virtual Services, Pools & NAT
+    if edges:
+        for edge in edges:
+            eid = edge['id']
+            ename = edge.get('name')
+            # 1) VS
+            try:
+                vss = api.list_all(f'edgeGateways/{eid}/loadBalancer/virtualServiceSummaries')
+            except VCDError: vss = []
+            for vs in vss:
+                vs_name = vs.get('name', '')
+                if name in vs_name:
+                    step("delete LB virtualService", vs_name)
+                    try:
+                        api.submit('DELETE', f"{CLOUD_API}/loadBalancer/virtualServices/{vs['id']}", json_api=True, label=f"del VS {vs_name}", tolerate=(404,))
+                        ok(f"VS {vs_name}")
+                    except VCDError as e:
+                        err(f"  {vs_name}: {e}")
+            # 2) Pools
+            try:
+                pools = api.list_all(f'edgeGateways/{eid}/loadBalancer/poolSummaries')
+            except VCDError: pools = []
+            for p in pools:
+                p_name = p.get('name', '')
+                if name in p_name:
+                    step("delete LB pool", p_name)
+                    try:
+                        api.submit('DELETE', f"{CLOUD_API}/loadBalancer/pools/{p['id']}", json_api=True, label=f"del pool {p_name}", tolerate=(404,))
+                        ok(f"pool {p_name}")
+                    except VCDError as e:
+                        err(f"  {p_name}: {e}")
+            # 3) NAT Rules
+            try:
+                rules = api.list_all(f'edgeGateways/{eid}/nat/rules')
+            except VCDError: rules = []
+            for rl in rules:
+                rl_name = rl.get('name', '')
+                if name in rl_name:
+                    step("delete NAT rule", rl_name)
+                    try:
+                        api.submit('DELETE', f"{CLOUD_API}/edgeGateways/{eid}/nat/rules/{rl['id']}", json_api=True, label=f"del NAT {rl_name}", tolerate=(404,))
+                        ok(f"NAT rule {rl_name}")
+                    except VCDError as e:
+                        err(f"  {rl_name}: {e}")
 
     # CSE tokens
     n_tok = _delete_cse_tokens_for_cluster(api, name, owner_name=owner)
@@ -1134,7 +1179,7 @@ def menu_delete_k8s_cluster(api: VCD, inv: Inventory):
         warn("aborted"); return
     for tns, ent in selected:
         try:
-            delete_one_k8s_cluster(api, tns, ent, vdcs=inv.vdcs)
+            delete_one_k8s_cluster(api, tns, ent, vdcs=inv.vdcs, edges=inv.edges)
         except VCDError as e:
             err(str(e))
     # After deletion, offer to scrub stray cse-* tokens left from past attempts.
@@ -1243,29 +1288,17 @@ def ask_vms_action(inv: Inventory) -> str:
 
 
 def quick_org_stats(api: VCD) -> list[dict]:
-    """List orgs with basic counters. VM/vApp counts need a per-VDC query each, so on
-    a vCD with lots of tenants this takes a few seconds. That's the trade-off."""
+    """List orgs without counting resources (Light Mode for unstable connections)."""
     orgs = api.query('organization')
     out = []
     for o in orgs:
         name = o.get('name')
         href = o.get('href')
         uuid = href.rstrip('/').split('/')[-1]
-        vdcs = api.query('adminOrgVdc', f'orgName=={name}')
-        n_vapps = n_vms = n_powered = 0
-        for vd in vdcs:
-            vn = vd.get('name')
-            n_vapps += len(api.query('adminVApp', f'vdcName=={vn}'))
-            for vm in api.query('adminVM', f'vdcName=={vn}'):
-                n_vms += 1
-                if is_vm_powered(vm): n_powered += 1
         out.append({
             'name': name, 'uuid': uuid, 'href': href,
             'enabled': o.get('isEnabled'),
-            'vdcs': len(vdcs),
-            'vapps': n_vapps,
-            'vms': n_vms,
-            'powered': n_powered,
+            'vdcs': 0, 'vapps': 0, 'vms': 0, 'powered': 0, 'k8s': 0
         })
     return out
 
@@ -1291,19 +1324,16 @@ def quick_rde_stats(api: VCD, orgs: list[dict]) -> dict[str, int]:
 
 
 def menu_pick_org(api: VCD) -> str | None:
-    info("Collecting organization list (vApps/VMs/k8s)...")
+    info("Collecting organization list (Fast Mode)...")
     orgs = quick_org_stats(api)
-    rdes = quick_rde_stats(api, orgs)
+    # rdes = quick_rde_stats(api, orgs)  <-- Bypassed for speed
     orgs.sort(key=lambda o: o['name'])
 
     print()
     head("Organizations")
-    print(f"  {'#':>3}  {'NAME':25s}  {'ENB':3s}  {'VDC':>3} {'vApp':>4} {'VMs(on/all)':>13} {'k8s/RDE':>7}")
+    print(f"  {'#':>3}  {'NAME':25s}  {'ENB':3s}")
     for i, o in enumerate(orgs, 1):
-        on = f"{o['powered']}/{o['vms']}"
-        mark = '*' if (o['powered'] or rdes.get(o['name'], 0) or o['vapps']) else ' '
-        print(f"  {i:>3}{mark} {o['name']:25s}  {('on' if o['enabled'] else 'off'):3s}  "
-              f"{o['vdcs']:>3} {o['vapps']:>4} {on:>13} {rdes.get(o['name'],0):>7}")
+        print(f"  {i:>3}  {o['name']:25s}  {('on' if o['enabled'] else 'off'):3s}")
     print(f"\n  q  quit")
     while True:
         ans = input("Pick org: ").strip().lower()
