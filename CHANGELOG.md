@@ -3,6 +3,35 @@
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [SemVer](https://semver.org/).
 
+## [1.2.0] — 2026-05-27
+
+### Added
+
+- **NSX-T Load Balancer cleanup for `delete-k8s`** — the selective cluster
+  removal action now also identifies and deletes Avi Virtual Services,
+  Pools, and NAT rules associated with the Kubernetes cluster name. This
+  prevents orphan Load Balancer components from accumulating in the
+  provider infrastructure.
+- **Native Windows support** — added `nuke-vcd.ps1` (PowerShell) and
+  `nuke-vcd.bat` wrappers. These provide the same automatic environment
+  setup and config handling as the bash script but on native Windows CMD
+  and PowerShell environments.
+
+### Changed
+
+- **Fast Menu Mode** — the organization selection menu now loads names only
+  by default. This drastically reduces the number of API calls during startup,
+  preventing `ConnectionResetError` (10054) and `ReadTimeout` issues on
+  unstable network connections (like high-latency VPNs with MTU bottlenecks).
+- **Disabled ANSI Colors** — terminal color codes are now disabled by
+  default for better readability in the standard Windows Command Prompt.
+
+### Fixed
+
+- **API Timeouts** — implemented an explicit 60-second timeout on all
+  requests to prevent the script from hanging indefinitely during network
+  transients or when encountering PMTU blackholes.
+
 ## [1.1.1] — 2026-05-21
 
 ### Fixed
@@ -69,6 +98,7 @@ Initial release.
 - INI-file based credentials with env var overrides.
 - Bash launcher with optional venv auto-setup.
 
+[1.2.0]: https://github.com/Alex-Electron/VMware-Cloud-Director/releases/tag/v1.2.0
 [1.1.1]: https://github.com/Alex-Electron/VMware-Cloud-Director/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Alex-Electron/VMware-Cloud-Director/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Alex-Electron/VMware-Cloud-Director/releases/tag/v1.0.0
