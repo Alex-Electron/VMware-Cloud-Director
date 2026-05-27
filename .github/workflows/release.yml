@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract Changelog Section
+        id: changelog_reader
+        run: |
+          # Get current tag (e.g. v1.2.0)
+          TAG=${GITHUB_REF#refs/tags/}
+          # Extract section from CHANGELOG.md between current tag header and the next H2 header
+          # Matches "## [1.2.0]" or "## 1.2.0"
+          VERSION=${TAG#v}
+          sed -n "/## \[$VERSION\]/,/## /p" CHANGELOG.md | sed '$d' > release_notes.md
+          echo "notes_file=release_notes.md" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_notes.md
+          name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
